@@ -8,17 +8,29 @@ import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
+/**
+* This is the central class for the application, and implements critical functionality for holding and reserving seats
+* It provides methods for checking available seats and expired holds, in addition to committing holds and reservations
+* Dependency Injection is used by providing an instance of Venue class to the constructor of this class, making it extensible to other Venue types/instances
+*/
 public class TicketServiceImplementor implements TicketService{
 	
 	private ArrayList<Integer> IDsGenerated;
 	@Inject private final Venue venue;
 	
+	/**
+	 * constructor
+	 * @param venue: instance of Venue class, injected
+	 */
 	@Inject
 	public TicketServiceImplementor(Venue venue){
 		this.venue = venue;
 		IDsGenerated = new ArrayList<Integer>();
 	}
 	
+	/**
+	 * Checks for 'expired' holds and mark them as such
+	 */
 	public void checkAndRemoveExpiredHolds() {
 		
 		ArrayList<SeatHold> holdsToBeRemoved = new ArrayList<SeatHold>();
@@ -38,6 +50,10 @@ public class TicketServiceImplementor implements TicketService{
 		}
 	}
 
+	/**
+	 * Gets the number of 'Available' seats, which is all seats that are not held or reserved	
+	 * @return the number of seats available 
+	 */
 	public int numSeatsAvailable() {
 		
 		checkAndRemoveExpiredHolds();
@@ -51,6 +67,14 @@ public class TicketServiceImplementor implements TicketService{
 				.count();
 	}
 	
+	/**
+	 * Find next best seats (by calling a method for that), and creates a seat hold
+	 * Returns null if no seats are available
+	 * Generates a unique 6-digit positive number and uses it as its ID (which is then needed to reserve the held seats)
+	 * @param numSeats: number of seats requested to be held
+	 * @param customerEmail: email address of the person making the request
+	 * @return a SeatHold object that represents the seat hold
+	 */
 	public SeatHold findAndHoldSeats(int numSeats, String customerEmail) {		
 		
 		checkAndRemoveExpiredHolds();	
@@ -65,6 +89,15 @@ public class TicketServiceImplementor implements TicketService{
 		}
 	}
 
+	
+	/**
+	 * Reserves seats contained in a SeatHold
+	 * Ensures that the Seat Hold isn't expired 
+	 * Generates a unique 8-digit alphanumeric confirmation code
+	 * @param seatHoldId: ID of the SeatHold object
+	 * @param customerEmail: email address of the person making the request
+	 * @return a string confirmation code for successful reservation, or appropriate error message otherwise
+	 */
 	public String reserveSeats(int seatHoldId, String customerEmail) {			
 		
 		checkAndRemoveExpiredHolds();
@@ -97,16 +130,14 @@ public class TicketServiceImplementor implements TicketService{
 		}		
 	}
 	
-	public boolean isHoldExpired(int seatHoldId) {
+	/**
+	 * Checks if provided SeatHold is expired. Calls the 'checkAndRemoveExpiredHolds()' method first, which detects and marks expired holds invalid
+	 * @param seatHoldId ID for SeatHold object
+	 * @return true if the hold is expired, false otherwise
+	 */
+	public boolean isHoldExpired(int seatHoldId) {		
 		
-		System.out.println("Expired seat IDs at this stage:");
-		venue.getExpiredSeatHoldIDs().stream().forEach(System.out::println);
-		
-		checkAndRemoveExpiredHolds();
-		
-		System.out.println("Expired seat IDs at this stage:");
-		
-		venue.getExpiredSeatHoldIDs().stream().forEach(System.out::println);
+		checkAndRemoveExpiredHolds();		
 		
 		if(venue.getExpiredSeatHoldIDs().contains(seatHoldId)) {
 			return true;
@@ -116,6 +147,11 @@ public class TicketServiceImplementor implements TicketService{
 		}
 	}
 	
+	/**
+	 * Checks if provided SeatHold ID is valid (i.e. a SeatHold exists for it)
+	 * @param seatHoldId ID for SeatHold object
+	 * @return true if the SeatHold ID is valid, false otherwise
+	 */
 	public boolean isValidHoldID(int seatHoldId) {		
 		
 		Optional<SeatHold> s = venue.getSeatHoldByID(seatHoldId);
@@ -127,6 +163,12 @@ public class TicketServiceImplementor implements TicketService{
 		}
 	}
 	
+	/**
+	 * Finds and returns next best N seat numbers. Employs a simple greedy logic to get next available seats from a list of seats
+	 * Called internally by method findAndHoldSeats. Not available for public use.
+	 * @param numSeats Number of seats requested for hold
+	 * @return a list of integer values represneting seat numbers
+	 */
 	private List<Integer> getNextBestSeatNumbers(int numSeats){
 		
 		Set<Integer> heldSeatIDs = venue.getSeatHolds().stream().map(s -> s.getSeatIDsHeld()).flatMap(Collection::stream).collect(Collectors.toSet());
@@ -140,7 +182,12 @@ public class TicketServiceImplementor implements TicketService{
 				.collect(Collectors.toList());
 	}
 	
-	private int generateID() {
+	/**
+	 * Generates an 8-digit random positive integer to be used as an ID for SeatHold
+	 * Keeps track of previously generated IDs to ensure the next one is unique 
+	 * @return a unique (not used previously) 8-digit random positive integer
+	 */
+	int generateID() {
 		
 		boolean isIDUnique = false;
 		int n = 0;

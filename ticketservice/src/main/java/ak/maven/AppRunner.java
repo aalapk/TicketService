@@ -4,10 +4,19 @@ import java.util.Optional;
 import java.util.Scanner;
 import java.util.stream.Collectors;
 
+/**
+ * This class is the entry point for the app execution, through the public static void main(String[] args) method
+ * The class does the job of handling interactive command line interface with the end user
+ */
 public class AppRunner {
 
 	private static Scanner sn;
 
+	/**
+	 * Main method. Handles command line interaction through menu of options
+	 * Uses Scanner class to capture user inputs
+	 * @param args User inputs
+	 */
 	public static void main(String[] args) {
 		
 		TicketServiceImplementor tsinstance = new TicketServiceImplementor(new Venue(50));
@@ -149,9 +158,7 @@ public class AppRunner {
 					
 					else {  //Hold ID is valid int
 						holdIDIsInt = true;
-						holdIDInt = Integer.parseInt(holdID);
-						
-						System.out.println("Here now 1");
+						holdIDInt = Integer.parseInt(holdID);						
 						
 						if(tsinstance.isHoldExpired(holdIDInt)) {   //Expired hold
 							System.out.println("-------------------------------------------------------");
@@ -199,6 +206,11 @@ public class AppRunner {
 		}
 	}
 	
+	/**
+	 * Checks if the option provided the user (as string) is a positive integer
+	 * @param s the string representation of the user selection
+	 * @return true if positive integer, false otherwise
+	 */
 	public static boolean isPositiveInteger(String s) {
 	      boolean isValidInteger = false;
 	      try{

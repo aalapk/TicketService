@@ -8,6 +8,10 @@ import org.junit.Test;
 import org.junit.After;
 import org.junit.Before;
 
+/**
+ * This class contains junit test cases to test functionality mainly of TicketServiceImplementor.java
+ * @Before is used to initialize an instance of TicketServiceImplementor.java before ever test case, and using @After, it's set to null after each test
+ */
 public class TicketServiceTest {
 	
 	private TicketServiceImplementor tsinstance;
@@ -23,97 +27,152 @@ public class TicketServiceTest {
     }	
 	
 	@Test
-	public void numSeatsAvailable_testInitialSetup() {		
-		assertEquals(50, tsinstance.numSeatsAvailable());		
+	public void numSeatsAvailable_InitialSetup_AllSeatsAvailable() {		
+		assertEquals(tsinstance.getVenue().getSeatsChart().length, tsinstance.numSeatsAvailable());		
 	}
 	
 	@Test
-	public void numSeatsAvailable_testAfterAHold() {	
-		tsinstance.findAndHoldSeats(10, "someemail");
-		assertEquals(40, tsinstance.numSeatsAvailable());		
-	}
-	
-	@Test
-	public void numSeatsAvailable_testAfterAHoldAndAReservation() {	
-		tsinstance.findAndHoldSeats(10, "someemail");
-		tsinstance.findAndHoldSeats(10, "someemail");
-		tsinstance.reserveSeats(1, "someemail");
-		assertEquals(30, tsinstance.numSeatsAvailable());				
-	}
-	
-	@Test
-	public void numSeatsAvailable_NotEnoughSeatsAvailable() {		
-		SeatHold s = tsinstance.findAndHoldSeats(60, "someemail");
-		assertNull(s);
-	}
-	
-	@Test
-	public void findAndHoldSeats_testSuccessfulHold() {		
+	public void findAndHoldSeats_ValidHoldRequested_HoldCreated() {		
 		SeatHold s = tsinstance.findAndHoldSeats(20, "someemail");
 		assertNotNull(s);
 	}
 	
 	@Test
-	public void findAndHoldSeats_testHoldSize() {		
+	public void numSeatsAvailable_HoldAdded_HeldSeatsNotAvailable() {	
+		tsinstance.findAndHoldSeats(10, "someemail");
+		assertEquals(tsinstance.getVenue().getSeatsChart().length - 10, tsinstance.numSeatsAvailable());		
+	}
+	
+	@Test
+	public void numSeatsAvailable_HoldAndReservationAdded_HeldAndReservedSeatsNotAvailable() {	
+		SeatHold s1 = tsinstance.findAndHoldSeats(10, "someemail");
+		SeatHold s2 = tsinstance.findAndHoldSeats(10, "someemail");
+		tsinstance.reserveSeats(s1.getSeatHoldID(), "someemail");
+		assertEquals(tsinstance.getVenue().getSeatsChart().length - 20, tsinstance.numSeatsAvailable());				
+	}
+	
+	@Test
+	public void numSeatsAvailable_MoreSeatsRequestedThanAvailable_NotEnoughSeatsAvailable() {		
+		SeatHold s = tsinstance.findAndHoldSeats(60, "someemail");
+		assertNull(s);
+	}
+	
+	@Test
+	public void numSeatsAvailable_HoldAddedAndMoreSeatsRequestedThanAvailable_NotEnoughSeatsAvailable() {		
+		SeatHold s1 = tsinstance.findAndHoldSeats(20, "someemail");
+		SeatHold s2 = tsinstance.findAndHoldSeats(tsinstance.getVenue().getSeatsChart().length - 10, "someemail");
+		assertNull(s2);
+	}
+	
+	@Test
+	public void numSeatsAvailable_HoldExpired_ExpiredSeatsAvailable() {
+		tsinstance.getVenue().addHold(new SeatHold(123456, new ArrayList<Integer>(Arrays.asList(1, 2, 3, 4, 5)), "someemail", LocalDateTime.now().minusSeconds(55))); //expired
+		tsinstance.getVenue().addHold(new SeatHold(234567, new ArrayList<Integer>(Arrays.asList(6, 7, 8)), "someemail", LocalDateTime.now().minusSeconds(5))); //valid
+		assertEquals(tsinstance.getVenue().getSeatsChart().length - 3, tsinstance.numSeatsAvailable());		
+	}
+	
+	@Test
+	public void findAndHoldSeats_HoldAdded_CorrectNumberOfSeatsHeld() {		
 		SeatHold s = tsinstance.findAndHoldSeats(10, "someemail");
 		assertEquals(10, s.getSeatIDsHeld().size());		
-	}	
-	
-	@Test
-	public void findAndHoldSeats_testHoldID() {		
-		SeatHold s = tsinstance.findAndHoldSeats(10, "someemail");
-		assertEquals(1, s.getSeatHoldID());		
 	}
 	
 	@Test
-	public void findAndHoldSeats_testHoldIDAfterMultipleHolds() {
-		SeatHold s = null;
-		for(int i=0; i<4; i++)
-		{
-			s = tsinstance.findAndHoldSeats(i, "someemail");
+	public void findAndHoldSeats_HoldAdded_HoldIDLengthAsExpected() {		
+		ArrayList<SeatHold> seatHolds = new ArrayList<SeatHold>();
+		for(int i = 0; i < 10; i++){
+			seatHolds.add(tsinstance.findAndHoldSeats(2, "someemail"));
+		}
+		Boolean invalidIDFound = false;
+		for(SeatHold s : seatHolds) {
+			if(s.getSeatHoldID() < 100000 || s.getSeatHoldID() > 999999) {
+				invalidIDFound = true;
+			}
 		}		
-		assertEquals(4, s.getSeatHoldID());		
+		assertFalse(invalidIDFound);   //6-digit ID
 	}
 	
 	@Test
-	public void findAndHoldSeats_testHoldSeatIDs() {		
+	public void findAndHoldSeats_HoldAdded_SeatIDsAsExpected() {		
 		SeatHold s = tsinstance.findAndHoldSeats(5, "someemail");
 		List<Integer> a = Arrays.asList(1, 2, 3, 4, 5);  
 		assertEquals(a, s.getSeatIDsHeld()); 		
 	}
 	
 	@Test
-	public void findAndHoldSeats_testSeatSuperiority() {
+	public void findAndHoldSeats_MultipleHoldsAdded_SeatIDsAsExpected() {		
+		SeatHold s1 = tsinstance.findAndHoldSeats(5, "someemail");
+		SeatHold s2 = tsinstance.findAndHoldSeats(3, "someemail");
+		List<Integer> a = Arrays.asList(6, 7, 8);  
+		assertEquals(a, s2.getSeatIDsHeld()); 		
+	}
+	
+	@Test
+	public void findAndHoldSeats_MultipleHoldsAdded_SeatNumbersWorsenWithHolds() {
 		SeatHold s1 = tsinstance.findAndHoldSeats(5, "someemail");
 		SeatHold s2 = tsinstance.findAndHoldSeats(5, "someemail");
 		assert(s1.getSeatIDsHeld().get(s1.getSeatIDsHeld().size()-1) < s2.getSeatIDsHeld().get(0));
 	}
 	
 	@Test
-	public void reserveSeats_testSuccessfulReservation() {
-		tsinstance.findAndHoldSeats(10, "someemail");
-		String result =  tsinstance.reserveSeats(1, "someemail");
-		assertEquals("Reservation completed successfully!!", result);
+	public void reserveSeats_ReservationAdded_SuccessfulConfirmation() {
+		SeatHold s = tsinstance.findAndHoldSeats(10, "someemail");
+		String result =  tsinstance.reserveSeats(s.getSeatHoldID(), "someemail");
+		assert(!result.equals(tsinstance.getVenue().getHoldExpiredMessage()) && !result.equals(tsinstance.getVenue().getHoldNotFoundMessage()));
 	}
 	
 	@Test
-	public void reserveSeats_InvalidHoldID() {
+	public void reserveSeats_InvalidHoldIDProvidedForReservation_CorrectErrorMessage() {
 		tsinstance.findAndHoldSeats(10, "someemail");
 		String result =  tsinstance.reserveSeats(101, "someemail");
-		assertEquals("Couldn't find a hold with the hold ID provided", result);
+		assertEquals(tsinstance.getVenue().getHoldNotFoundMessage(), result);
 	}
 	
 	@Test
-	public void reserveSeats_testDelayedHold() {
-		tsinstance.getVenue().addHold(new SeatHold(1, new ArrayList<Integer>(Arrays.asList(1, 2, 3, 4, 5)), "someemail", LocalDateTime.now().minusSeconds(15)));
-		String result =  tsinstance.reserveSeats(1, "someemail");
-		assertEquals("Reservation completed successfully!!", result);
+	public void reserveSeats_HoldDelayedButValid_SuccessfulReservation() {
+		tsinstance.getVenue().addHold(new SeatHold(123456, new ArrayList<Integer>(Arrays.asList(1, 2, 3, 4, 5)), "someemail", LocalDateTime.now().minusSeconds(15)));
+		String result =  tsinstance.reserveSeats(123456, "someemail");
+		assert(!result.equals(tsinstance.getVenue().getHoldExpiredMessage()) && !result.equals(tsinstance.getVenue().getHoldNotFoundMessage()));
 	}
 	
 	@Test
-	public void reserveSeats_testExpiredHold() {
-		tsinstance.getVenue().addHold(new SeatHold(1, new ArrayList<Integer>(Arrays.asList(1, 2, 3, 4, 5)), "someemail", LocalDateTime.now().minusSeconds(51)));
-		String result =  tsinstance.reserveSeats(1, "someemail");
-		assertEquals("Your hold has expired. Please initiate a new reservation", result);
+	public void reserveSeats_HoldExpired_NoReservationCorrectErrorMessage() {
+		tsinstance.getVenue().addHold(new SeatHold(123456, new ArrayList<Integer>(Arrays.asList(1, 2, 3, 4, 5)), "someemail", LocalDateTime.now().minusSeconds(51)));
+		String result =  tsinstance.reserveSeats(123456, "someemail");
+		assertEquals(tsinstance.getVenue().getHoldExpiredMessage(), result);
+	}
+	
+	@Test
+	public void reserveSeats_HoldAddedAndReserved_SeatIDsOfHoldAndReservationMatch() {
+		SeatHold s = tsinstance.findAndHoldSeats(10, "someemail");
+		String result =  tsinstance.reserveSeats(s.getSeatHoldID(), "someemail");
+		assertEquals(s.getSeatIDsHeld(),tsinstance.getVenue().getReservations().get(0).getSeatIDsReserved());
+	}	
+	
+	@Test
+	public void isHoldExpired_HoldValid_ReturnsFalse() {
+		tsinstance.getVenue().addHold(new SeatHold(123456, new ArrayList<Integer>(Arrays.asList(1, 2, 3, 4, 5)), "someemail", LocalDateTime.now().minusSeconds(5)));
+		String result =  tsinstance.reserveSeats(123456, "someemail");
+		assertFalse(tsinstance.isHoldExpired(123456));
+	}
+	
+	@Test
+	public void isValidHoldID_ValidHoldID_ReturnsTrue() {
+		tsinstance.getVenue().addHold(new SeatHold(123456, new ArrayList<Integer>(Arrays.asList(1, 2, 3, 4, 5)), "someemail", LocalDateTime.now().minusSeconds(5)));
+		assertTrue(tsinstance.isValidHoldID(123456));
+	}
+	
+	@Test
+	public void isValidHoldID_InvalidHoldID_ReturnsFalse() {
+		tsinstance.getVenue().addHold(new SeatHold(123456, new ArrayList<Integer>(Arrays.asList(1, 2, 3, 4, 5)), "someemail", LocalDateTime.now().minusSeconds(5)));
+		assertFalse(tsinstance.isValidHoldID(654321));
+	}
+	
+	@Test
+	public void	checkAndRemoveExpiredHolds_ExpiredHoldsExist_ExpiredHoldsRemoved() {
+		tsinstance.getVenue().addHold(new SeatHold(123456, new ArrayList<Integer>(Arrays.asList(1, 2, 3, 4, 5)), "someemail", LocalDateTime.now().minusSeconds(5))); //valid
+		tsinstance.getVenue().addHold(new SeatHold(234567, new ArrayList<Integer>(Arrays.asList(6, 7, 8)), "someemail", LocalDateTime.now().minusSeconds(55))); //expired
+		tsinstance.checkAndRemoveExpiredHolds();
+		assertEquals(1, tsinstance.getVenue().getExpiredSeatHoldIDs().size());
 	}	
 }
