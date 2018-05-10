@@ -3,7 +3,7 @@ Ticket Service for implementing ticket reservation system for a venue
 
 Assumptions:
 
-1. In absence of persistent storage, the application doesn't support concurrent instances and multiple threads.
+1. In absence of persistent storage, the application doesn't support concurrent instances and multiple threads. All data is stored in memory and hence is flushed every time the application runs.
 2. The application employs a simple greedy logic for finding best seats for users. Seats are numbered sequentially, and a consecutive chunk of next available seats is chosen as best seats. Problem of finding 'best' seats in a venue is an NP-hard problem that would require optimizations and backtracking, and even then, is subjective.
 3. Hold timeout is configured as 45 seconds. It can be changed easily by altering a value in Venue.java (private final int holdTimeoutInSeconds = 45). Seat holds become invalid after 45 seconds and can't be reserved. Seats from expired holds become available.
 4. Number of seats in a venue is configured as 50. This can be changed easily in AppRunner.java (new Venue(50)).
@@ -23,3 +23,9 @@ Build instructions:
 Dependencies:
 1. Java (JRE) 1.8 or higher
 2. Maven (takes care of other dependencies, e.g. junit)
+
+Running the application:
+1. The application runs entirely on the command line
+2. User is provided with interactive interface, and needs to key in input for different menu options
+3. The application validates against invalid selections
+4. Hitting 0 (zero) takes the user back to the main menu on the command line
