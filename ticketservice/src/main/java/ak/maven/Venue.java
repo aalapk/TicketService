@@ -5,10 +5,10 @@ import java.util.*;
 /**
 * This class represents the Venue entity, mainly the seats available, held and reserved
 * It owns data for seat holds, reservations, and provides functions to get/set that data
-* It also hosts some configurations, such as messages to end user, hold timeout etc.
+* It also hosts some configurations, such as messages to end user and hold timeout
 * Most methods are getters/setters
 */
-public final class Venue {	
+public final class Venue {
 	 
     private int noOfSeats;
     private Seat[] seatsChart;
@@ -19,24 +19,25 @@ public final class Venue {
     private final String reservationSuccessMessage = "Reservation completed successfully!!";
     private final String notEnoughSeatsAvailableMessage = "Sorry, we don't have as many seats available as you have requested";
     private final String holdNotFoundMessage = "Couldn't find a hold with the hold ID provided";
-    private final String holdExpiredMessage = "Sorry, your hold has expired. Please initiate a new reservation.";
-    
+    private final String holdExpiredMessage = "Sorry, your hold has expired. Please initiate a new hold/reservation.";
+    private final int lengthOfSeatHoldID = 6;
+    private final int lengthOfReservationConfirmationCode = 8;
     
     /**
      * Constructor 
      * @param noOfSeats No. of seats for the venue
      */
-    public Venue(int noOfSeats) {    	
+    public Venue(int noOfSeats) {
 		this.seatsChart = new Seat[noOfSeats];
 		seatHolds = new ArrayList<SeatHold>();
 		reservations = new ArrayList<Reservation>();
 		expiredSeatHoldIDs = new ArrayList<Integer>();
 		
 		for(int i = 0; i < noOfSeats; i++)
-			this.seatsChart[i] = new Seat(i+1); //Seat number = 1 for array index 0
+			this.seatsChart[i] = new Seat(i+1); //i+1 is used so as to not number a seat with 0, but instead start with 1
     }
-    
-    /**
+
+	/**
      * Finds the SeatHold object corresponding to the Seat Hold ID, if one exists.
      * @param seatHoldID Seat Hold ID
      * @return Optional SeatHold object 
@@ -56,7 +57,7 @@ public final class Venue {
 	}
 	
 	/**
-	 * Removes the SeatHold object from a collection of SeatHol objects
+	 * Removes the SeatHold object from a collection of SeatHold objects
 	 * @param seatHold SeatHold ID
 	 */
 	public void removeHold(SeatHold seatHold){
@@ -122,5 +123,13 @@ public final class Venue {
 
 	public String getHoldExpiredMessage() {
 		return holdExpiredMessage;
+	}	
+
+    public int getLengthOfSeatHoldID() {
+		return lengthOfSeatHoldID;
+	}
+
+	public int getLengthOfReservationConfirmationCode() {
+		return lengthOfReservationConfirmationCode;
 	}
 }

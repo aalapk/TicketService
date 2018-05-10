@@ -10,12 +10,14 @@ import javax.inject.Inject;
 
 /**
 * This is the central class for the application, and implements critical functionality for holding and reserving seats
-* It provides methods for checking available seats and expired holds, in addition to committing holds and reservations
-* Dependency Injection is used by providing an instance of Venue class to the constructor of this class, making it extensible to other Venue types/instances
+* It implements methods for checking available seats and expired holds, in addition to committing holds and reservations
+* Dependency Injection is used by providing an instance of Venue class to the constructor of this class, making it extensible to other Venue types
 */
-public class TicketServiceImplementor implements TicketService{
+public class TicketServiceImplementor implements TicketService {
 	
 	private ArrayList<Integer> IDsGenerated;
+	private ArrayList<String> confirmationCodesGenerated;
+	
 	@Inject private final Venue venue;
 	
 	/**
@@ -23,13 +25,15 @@ public class TicketServiceImplementor implements TicketService{
 	 * @param venue: instance of Venue class, injected
 	 */
 	@Inject
-	public TicketServiceImplementor(Venue venue){
+	public TicketServiceImplementor(Venue venue) {
 		this.venue = venue;
 		IDsGenerated = new ArrayList<Integer>();
+		confirmationCodesGenerated = new ArrayList<String>();
 	}
 	
 	/**
 	 * Checks for 'expired' holds and mark them as such
+	 * Frees up seats held against them
 	 */
 	public void checkAndRemoveExpiredHolds() {
 		
@@ -39,14 +43,14 @@ public class TicketServiceImplementor implements TicketService{
 			
 			long difference = Duration.between(s.getHoldTimestamp(), LocalDateTime.now()).getSeconds();   // time since hold request	
 			
-			if(difference > venue.getHoldTimeout()) {   //hold is expired	
-				holdsToBeRemoved.add(s);				
+			if(difference > venue.getHoldTimeout()) {
+				holdsToBeRemoved.add(s);	
 			}
 		}
 		
 		for (SeatHold s : holdsToBeRemoved) {
 			venue.markHoldExpired(s.getSeatHoldID());
-			venue.getSeatHolds().remove(s);			
+			venue.getSeatHolds().remove(s);
 		}
 	}
 
@@ -69,42 +73,58 @@ public class TicketServiceImplementor implements TicketService{
 	
 	/**
 	 * Find next best seats (by calling a method for that), and creates a seat hold
+	 * Calls method 'getNextBestSeatNumbers' to get next best seats
 	 * Returns null if no seats are available
-	 * Generates a unique 6-digit positive number and uses it as its ID (which is then needed to reserve the held seats)
+	 * Generates a unique 6-digit positive number and uses it as its ID (which is needed to reserve the held seats)
 	 * @param numSeats: number of seats requested to be held
 	 * @param customerEmail: email address of the person making the request
 	 * @return a SeatHold object that represents the seat hold
 	 */
-	public SeatHold findAndHoldSeats(int numSeats, String customerEmail) {		
+	public SeatHold findAndHoldSeats(int numSeats, String customerEmail) {
 		
-		checkAndRemoveExpiredHolds();	
+		checkAndRemoveExpiredHolds();
 		
-		if (numSeatsAvailable() < numSeats) {
+		if (numSeatsAvailable() < numSeats || numSeats == 0) {
 			return null;
 		}
-		else{
-			SeatHold hold = new SeatHold(generateID(), (ArrayList<Integer>) getNextBestSeatNumbers(numSeats), customerEmail, LocalDateTime.now());
+		
+		else {
+			
+			int randomSeatHoldID = 0;
+			boolean isIDUnique = false;
+			
+			/*
+			 * This is done to handle a rare scenario where a random number generated was generated and used previously.
+			 * In such a case, the application will keep fetching new random numbers, until it finds one not used previously
+			 */  
+			while(!isIDUnique) {
+				randomSeatHoldID = HelperMethods.generateID(venue.getLengthOfSeatHoldID());				
+				if(!IDsGenerated.contains(randomSeatHoldID)) {
+					isIDUnique = true;
+				}
+			}
+			
+			SeatHold hold = new SeatHold(randomSeatHoldID, (ArrayList<Integer>) getNextBestSeatNumbers(numSeats), customerEmail, LocalDateTime.now());
 			venue.addHold(hold);
 			return hold;
 		}
 	}
-
 	
 	/**
-	 * Reserves seats contained in a SeatHold
+	 * Reserves seats contained in a SeatHold object
 	 * Ensures that the Seat Hold isn't expired 
-	 * Generates a unique 8-digit alphanumeric confirmation code
+	 * Generates a unique alphanumeric confirmation code, of preconfigured length
 	 * @param seatHoldId: ID of the SeatHold object
 	 * @param customerEmail: email address of the person making the request
 	 * @return a string confirmation code for successful reservation, or appropriate error message otherwise
 	 */
-	public String reserveSeats(int seatHoldId, String customerEmail) {			
+	public String reserveSeats(int seatHoldId, String customerEmail) {
 		
 		checkAndRemoveExpiredHolds();
 		
 		if(isHoldExpired(seatHoldId)) {
 			return venue.getHoldExpiredMessage();
-		}		
+		}
 		
 		else if(!isValidHoldID(seatHoldId)){
 			return venue.getHoldNotFoundMessage();
@@ -112,22 +132,36 @@ public class TicketServiceImplementor implements TicketService{
 		
 		else {
 			Optional<SeatHold> s = venue.getSeatHoldByID(seatHoldId);
-			venue.removeHold(s.get()); //remove hold, whether or not it's valid (since reserving seats should remove the hold too)
+			venue.removeHold(s.get()); //remove hold, whether or not it's valid, since reserving seats should remove the hold too
 			
-			long difference = Duration.between(s.get().getHoldTimestamp(), LocalDateTime.now()).getSeconds(); //time between hold and reservation request		
+			long difference = Duration.between(s.get().getHoldTimestamp(), LocalDateTime.now()).getSeconds();
 			
-			if(difference > venue.getHoldTimeout()) { 			
+			if(difference > venue.getHoldTimeout()) {
 				return venue.getHoldExpiredMessage();
 			}
 		
 			else {
-				RandomString gen = new RandomString(8, ThreadLocalRandom.current());
-				String confirmationCode = gen.nextString();
+				
+				String confirmationCode = null;
+				Boolean randomCodeFound = false;
+				
+				/*
+				 * This is done to handle a rare scenario where a random string generated was generated and used previously.
+				 * In such a case, the application will keep fetching new random strings, until it finds one not used previously
+				 */
+				while(!randomCodeFound) {
+					confirmationCode = HelperMethods.generateRandomString(venue.getLengthOfReservationConfirmationCode());
+					if(!confirmationCodesGenerated.contains(confirmationCode)) {
+						randomCodeFound = true;
+						confirmationCodesGenerated.add(confirmationCode);
+					}
+				}
+				
 				venue.addReservation(new Reservation(confirmationCode, s.get().getSeatIDsHeld(), s.get().getCustomerEmail(), LocalDateTime.now()));
 				
 				return confirmationCode;
 			}
-		}		
+		}
 	}
 	
 	/**
@@ -137,7 +171,7 @@ public class TicketServiceImplementor implements TicketService{
 	 */
 	public boolean isHoldExpired(int seatHoldId) {		
 		
-		checkAndRemoveExpiredHolds();		
+		checkAndRemoveExpiredHolds();
 		
 		if(venue.getExpiredSeatHoldIDs().contains(seatHoldId)) {
 			return true;
@@ -152,7 +186,7 @@ public class TicketServiceImplementor implements TicketService{
 	 * @param seatHoldId ID for SeatHold object
 	 * @return true if the SeatHold ID is valid, false otherwise
 	 */
-	public boolean isValidHoldID(int seatHoldId) {		
+	public boolean isValidHoldID(int seatHoldId) {
 		
 		Optional<SeatHold> s = venue.getSeatHoldByID(seatHoldId);
 		
@@ -167,7 +201,7 @@ public class TicketServiceImplementor implements TicketService{
 	 * Finds and returns next best N seat numbers. Employs a simple greedy logic to get next available seats from a list of seats
 	 * Called internally by method findAndHoldSeats. Not available for public use.
 	 * @param numSeats Number of seats requested for hold
-	 * @return a list of integer values represneting seat numbers
+	 * @return a list of integer values representing seat numbers
 	 */
 	private List<Integer> getNextBestSeatNumbers(int numSeats){
 		
@@ -182,29 +216,7 @@ public class TicketServiceImplementor implements TicketService{
 				.collect(Collectors.toList());
 	}
 	
-	/**
-	 * Generates an 8-digit random positive integer to be used as an ID for SeatHold
-	 * Keeps track of previously generated IDs to ensure the next one is unique 
-	 * @return a unique (not used previously) 8-digit random positive integer
-	 */
-	int generateID() {
-		
-		boolean isIDUnique = false;
-		int n = 0;
-		
-		while(!isIDUnique) {
-			Random rnd = new Random();
-			n = 100000 + rnd.nextInt(900000);
-			if(!IDsGenerated.contains(n)) {
-				isIDUnique = true;
-			}
-		}	
-		
-		IDsGenerated.add(n);
-		return n;
-	}
-	
 	public Venue getVenue() {
 		return this.venue;
-	}	
+	}
 }

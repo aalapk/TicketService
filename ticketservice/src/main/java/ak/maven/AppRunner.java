@@ -25,7 +25,7 @@ public class AppRunner {
 		sn = new Scanner(System.in);
 		
 		while(true){
-			// Display menu graphics
+			
 			System.out.println("");
 			System.out.println("==========================================");
 		    System.out.println("| Ticket Booking Service (Main Menu)     |");
@@ -37,14 +37,12 @@ public class AppRunner {
 		    System.out.println("|        4. Exit                         |");
 		    System.out.println("==========================================");
 		    System.out.println("Enter your choice: ");
-		    
-			//Capture the user input in scanner object and store it in a pre decalred variable
-            //inputValue = UserInputHelper.inInt(" Select option: ");
+			
 		    userInput = sn.next();
-		    
-			//Check the user input
+			
 			switch(userInput){
-			case "1":				
+			
+			case "1":
 				System.out.println("=======================================================");
 				System.out.println("HOLD SEATS MENU");
 				System.out.println("=======================================================");
@@ -53,9 +51,8 @@ public class AppRunner {
 				System.out.println("Hit '0' (zero) at any stage to go back to the main menu");
 				System.out.println("=======================================================");
 				
-				boolean noOfSeatsValid = false;
+				boolean noOfSeatsValid = false, breakRequested = false;
 				String noOfSeats = null;
-				boolean breakRequested = false;
 				
 				int noOfSeatsInt = 0;
 				while(!noOfSeatsValid) {
@@ -63,65 +60,57 @@ public class AppRunner {
 					noOfSeats = sn.next();
 					
 					if(noOfSeats.equals("0")) {
-						System.out.println("Going back to the main menu ...");
 						breakRequested = true;
-						break;
+						break;						
 					}
 					
-					else if(!isPositiveInteger(noOfSeats)) {
-						System.out.println("No. of seats needs to be a positive integer");						
+					else if(!HelperMethods.isPositiveInteger(noOfSeats)) {
+						System.out.println("No. of seats needs to be a positive integer");
+						continue;
 					}
 					
 					else {
 						noOfSeatsInt = Integer.parseInt(noOfSeats);
 						if (tsinstance.numSeatsAvailable() < noOfSeatsInt) {
 							System.out.println(tsinstance.getVenue().getNotEnoughSeatsAvailableMessage());
-							System.out.println("Please try with fewer seats if you like");
+							System.out.println(tsinstance.numSeatsAvailable() + " seats are available for you to hold");
+							continue;
 						}
 						else {
 							noOfSeatsValid = true;
-						}	
-					}					
+						}
+					}
 				}
 				
-				if(!breakRequested) {					 
+				if(!breakRequested) {
+					System.out.println("Please provide an email address:");
+					String emailAddress = sn.next();  //No validation provided for email address
 					
-					String emailAddress = null;
-					boolean validEmail = false;
-					while(!validEmail) {					
-						System.out.println("Please provide an email address:");
-						emailAddress = sn.next();
-						if(noOfSeats.equals("0")) {
-							System.out.println("Going back to the main menu ...");							
-							break;							 
-						}
-						
-						else if(emailAddress.length() > 30) {
-							System.out.println("Please provide an email address less than 30 characters");
-						}
-						else {
-							validEmail = true;
-						}
-					}
-					
-					//Now proceed to seat hold
-
-					SeatHold s = tsinstance.findAndHoldSeats(noOfSeatsInt, emailAddress);
-					if(s == null) {
-						System.out.println("Something went wrong during the hold operation. Please try again.");
-					}
-						
-					else {
-						System.out.println("-------------------------------------------------------");
+					if(emailAddress.equals("0")) {
 						System.out.println("");
-						System.out.println("Your hold was successful!!");
-						System.out.println("-------------------------------------------------------");
-						System.out.println("Seat IDs held: " + s.getSeatIDsHeld().stream().map(v -> v.toString()).collect(Collectors.joining(",")));	
-						System.out.println("You hold ID is: " + s.getSeatHoldID() + ". You would need this hold ID to confirm the reservation!");
-						System.out.println("You need to confirm the reservation within next " + tsinstance.getVenue().getHoldTimeout() + " seconds, or else it will become invalid!");
-						System.out.println("---------------------------------------------");
-					}					
-				}		
+						System.out.println("Going back to the main menu ...");
+						break;
+					}
+					
+					else {
+						SeatHold s = tsinstance.findAndHoldSeats(noOfSeatsInt, emailAddress);
+						if(s == null) {
+							System.out.println("Something went wrong during the hold operation. Please try again.");
+						}
+							
+						else {
+							System.out.println("-------------------------------------------------------");
+							System.out.println("");
+							System.out.println("Your hold was successful!!");
+							System.out.println("-------------------------------------------------------");
+							System.out.println("Seat IDs held: " + s.getSeatIDsHeld().stream().map(v -> v.toString()).collect(Collectors.joining(",")));	
+							System.out.println("You hold ID is: " + s.getSeatHoldID() + ". You would need this hold ID to confirm the reservation!");
+							System.out.println("You need to confirm the reservation within next " + tsinstance.getVenue().getHoldTimeout() + " seconds, or else it will become invalid!");
+							System.out.println("---------------------------------------------");
+						}
+					}
+				}
+				
 				System.out.println("");
 				System.out.println("Going back to the main menu ...");
 				break;
@@ -135,58 +124,55 @@ public class AppRunner {
 				System.out.println("Hit '0' (zero) at any stage to go back to the main menu");
 				System.out.println("=======================================================");
 				
-				boolean holdIDIsInt = false;
-				boolean validHoldD = false;
-                String holdID = null;				
+				boolean holdIDIsInt = false, validHoldD = false;				
+                String holdID = null;
 				int holdIDInt = 0;
 				
 				while(!validHoldD || !holdIDIsInt) {
 					System.out.println("Please provide a Hold ID you received with your seat hold:");
-					holdID = sn.next();
+					holdID = sn.next();				
 					
-					System.out.println("");
-					
-					if(holdID.equals("0")) {
-						System.out.println("Going back to the main menu ...");
+					if(holdID.equals("0")) {						
 						break;
-					}
+					}				
 					
-					else if(!isPositiveInteger(holdID)) {
+					else if(!HelperMethods.isPositiveInteger(holdID)) {
 						System.out.println("Hold ID should be a positive integer");
+						System.out.println("-------------------------------------------------------");
 						continue;
 					}
 					
-					else {  //Hold ID is valid int
+					else {
 						holdIDIsInt = true;
-						holdIDInt = Integer.parseInt(holdID);						
+						holdIDInt = Integer.parseInt(holdID);
 						
-						if(tsinstance.isHoldExpired(holdIDInt)) {   //Expired hold
+						if(tsinstance.isHoldExpired(holdIDInt)) {   
 							System.out.println("-------------------------------------------------------");
 							System.out.println(tsinstance.getVenue().getHoldExpiredMessage());
 							System.out.println("-------------------------------------------------------");
-							break;	
+							break;
 						}
 						
-						else if(tsinstance.isValidHoldID(holdIDInt)) {   //Valid active hold
-							Optional<SeatHold> s = tsinstance.getVenue().getSeatHoldByID(holdIDInt);
-							String reservationCode = tsinstance.reserveSeats(holdIDInt, s.get().getCustomerEmail());
+						else if(tsinstance.isValidHoldID(holdIDInt)) {
+							Optional<SeatHold> sh = tsinstance.getVenue().getSeatHoldByID(holdIDInt);
+							String reservationCode = tsinstance.reserveSeats(holdIDInt, sh.get().getCustomerEmail());
 							System.out.println(tsinstance.getVenue().getReservationSuccessMessage());
 							System.out.println("-------------------------------------------------------");
-							System.out.println("Reservation details are below:");							
+							System.out.println("Reservation details are below:");
 							System.out.println("Reservation confirmation code: " + reservationCode);							
-							System.out.println("Seat IDs reserved: " + s.get().getSeatIDsHeld().stream().map(v -> v.toString()).collect(Collectors.joining(",")));							
-							System.out.println("You'll receive a confirmation email at " + s.get().getCustomerEmail());
+							System.out.println("Seat IDs reserved: " + sh.get().getSeatIDsHeld().stream().map(v -> v.toString()).collect(Collectors.joining(",")));							
+							System.out.println("You'll receive a confirmation email at " + sh.get().getCustomerEmail());
 							System.out.println("-------------------------------------------------------");
 							validHoldD = true;
 						}
 						
-						else {   //Not a valid Hold ID
-							System.out.println("-------------------------------------------------------");
+						else {							
 							System.out.println(tsinstance.getVenue().getHoldNotFoundMessage());
-							System.out.println("-------------------------------------------------------");							
-						}					
+							System.out.println("-------------------------------------------------------");
+						}
 					}
 				}
+				
 				System.out.println("");			
 				System.out.println("Going back to the main menu ...");
 				break;
@@ -194,33 +180,16 @@ public class AppRunner {
 			case "3":
 				int noOfSeatsAvailable = tsinstance.numSeatsAvailable();
 				System.out.println("No. of seats available: " + noOfSeatsAvailable);
-				break;	
+				break;
+				
 			case "4":
-				//exit from the program
 				System.out.println("Exiting...");
 				System.exit(0);
+				
 			default:
 			      System.out.println("Invalid selection");
-			      break; // This break is not really necessary
+			      break;
 			}
 		}
 	}
-	
-	/**
-	 * Checks if the option provided the user (as string) is a positive integer
-	 * @param s the string representation of the user selection
-	 * @return true if positive integer, false otherwise
-	 */
-	public static boolean isPositiveInteger(String s) {
-	      boolean isValidInteger = false;
-	      try{
-	         int i = Integer.parseInt(s);	         
-	         if(i > 0)
-	        	 isValidInteger = true;
-	      }
-	      catch (NumberFormatException ex){
-	         // s is not a positive integer
-	      }	 
-	      return isValidInteger;
-	   }
 }
